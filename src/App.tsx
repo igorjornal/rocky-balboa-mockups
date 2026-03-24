@@ -29,6 +29,7 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [downloadStatus, setDownloadStatus] = useState<Record<string, 'downloading' | 'saved'>>({});
+  const [maximizedImage, setMaximizedImage] = useState<GeneratedImage | HistoryItem | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -171,6 +172,18 @@ const App: React.FC = () => {
               )}
               <input type="file" ref={fileInputRef} className="hidden" accept="image/png,image/jpeg,image/webp,image/avif,image/heic" onChange={handleFileChange} />
             </div>
+
+            {/* GENERATE BUTTON MOVED TO LEFT COLUMN */}
+            <div className="w-full mt-6 relative z-10 flex flex-col gap-4">
+              {error && <div className="bg-black text-white p-4 brutalist-border font-bold uppercase flex items-center gap-3">⚠️ {error}</div>}
+              <button 
+                onClick={handleGenerate} 
+                disabled={isGenerateDisabled}
+                className={`w-full py-5 brutalist-border font-poster text-4xl md:text-5xl uppercase flex items-center justify-center gap-4 transition-all duration-200 ${isGenerateDisabled ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-[var(--color-brand-red)] text-white brutalist-shadow hover:translate-x-1 hover:translate-y-1 hover:shadow-none'}`}
+              >
+                {isLoading ? '🥊 GERANDO...' : 'GERAR MOCKUPS'}
+              </button>
+            </div>
           </div>
 
           {/* CONTROLS */}
@@ -216,29 +229,22 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {/* GENERATE BUTTON */}
-        <div className="w-full mt-10 relative z-10">
-          {error && <div className="mb-4 bg-black text-white p-4 brutalist-border font-bold uppercase flex items-center gap-3">⚠️ {error}</div>}
-          
-          <button 
-            onClick={handleGenerate} 
-            disabled={isGenerateDisabled}
-            className={`w-full py-6 brutalist-border font-poster text-5xl md:text-6xl uppercase flex items-center justify-center gap-4 transition-all duration-200 ${isGenerateDisabled ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-[var(--color-brand-red)] text-white brutalist-shadow hover:translate-x-1 hover:translate-y-1 hover:shadow-none'}`}
-          >
-            {isLoading ? '🥊 Nocauteando Nuvens...' : 'GERAR MOCKUPS'}
-          </button>
-        </div>
-
         {/* RESULTS GRID */}
         {generatedImages.length > 0 && (
           <div className="mt-16 w-full relative z-10">
             <h2 className="font-poster text-5xl text-black mb-6 uppercase border-b-8 border-black pb-2">
               RESULTADOS (O CINTURÃO) 🏆
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {generatedImages.map(img => (
                 <div key={img.id} className="brutalist-border bg-white flex flex-col">
-                  <div className="relative aspect-square bg-gray-100 flex items-center justify-center p-4 border-b-4 border-black">
+                  <div 
+                    className="relative aspect-square bg-gray-100 flex items-center justify-center p-4 border-b-4 border-black cursor-pointer group"
+                    onClick={() => !img.isLoading && setMaximizedImage(img)}
+                  >
+                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors z-20 flex items-center justify-center pointer-events-none">
+                       {!img.isLoading && <span className="opacity-0 group-hover:opacity-100 bg-white font-poster text-2xl px-4 py-2 brutalist-border scale-90 group-hover:scale-100 transition-all text-black">🔍 MAXIMIZAR</span>}
+                     </div>
                     {img.isLoading ? (
                       <span className="font-poster text-3xl animate-pulse">CARREGANDO...</span>
                     ) : (
@@ -255,6 +261,62 @@ const App: React.FC = () => {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* HISTORY GRID */}
+        {history.length > 0 && (
+          <div className="mt-16 w-full relative z-10 pt-10 border-t-8 border-black border-dashed">
+            <div className="flex items-center justify-between mb-6">
+                <h2 className="font-poster text-4xl text-black uppercase">
+                HISTÓRICO (ÚLTIMAS LUTAS) ⏱️
+                </h2>
+                <button onClick={() => setHistory([])} className="text-sm font-display font-bold uppercase underline hover:text-red-600">Limpar Histórico</button>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {history.map(item => (
+                <div key={item.id} className="brutalist-border bg-white flex flex-col hover:brutalist-shadow transition-shadow">
+                  <div 
+                    className="relative aspect-square bg-gray-100 flex items-center justify-center p-2 border-b-2 border-black cursor-pointer group"
+                    onClick={() => setMaximizedImage(item)}
+                  >
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors z-20 flex items-center justify-center pointer-events-none">
+                       <span className="opacity-0 group-hover:opacity-100 text-white font-poster text-4xl drop-shadow-md">🔍</span>
+                    </div>
+                    <img src={`data:image/png;base64,${item.src}`} alt="History" className="w-full h-full object-contain" />
+                  </div>
+                  <div className="p-2 bg-black flex justify-between">
+                     <span className="text-white font-display text-[10px] truncate">{item.category}</span>
+                     <button onClick={() => downloadImage(item.src, `mockup-${item.id}.png`, item.id)} className="text-white hover:text-[var(--color-brand-red)]">
+                        ⬇️
+                     </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* MODAL MAXIMIZAR */}
+        {maximizedImage && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 md:p-8 backdrop-blur-sm" onClick={() => setMaximizedImage(null)}>
+            <div className="relative w-full max-w-5xl max-h-full flex flex-col items-center justify-center p-4 animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+              <button 
+                className="absolute top-4 right-4 md:-right-8 md:-top-8 bg-white text-black font-poster text-3xl px-4 py-2 brutalist-border hover:bg-[var(--color-brand-red)] hover:text-white transition z-10"
+                onClick={() => setMaximizedImage(null)}
+              >X</button>
+              
+              <div className="relative w-full max-h-[75vh] flex justify-center">
+                  <img src={`data:image/png;base64,${maximizedImage.src}`} className="max-w-full max-h-[75vh] object-contain border-8 border-white brutalist-shadow-sm" />
+              </div>
+              
+              <button 
+                onClick={() => downloadImage(maximizedImage.src, `mockup-max-${maximizedImage.id}.png`, maximizedImage.id)} 
+                className="mt-8 font-poster text-3xl md:text-4xl uppercase bg-[var(--color-brand-red)] text-white px-10 py-5 brutalist-border hover:brutalist-shadow transition-all hover:-translate-y-1"
+              >
+                BAIXAR ESTA IMAGEM ⬇️
+              </button>
             </div>
           </div>
         )}
