@@ -12,8 +12,50 @@ const fileToBase64 = (file: File): Promise<{ raw: string, prefixed: string }> =>
       const raw = prefixed.split(',')[1];
       resolve({ raw, prefixed });
     };
+    };
     reader.onerror = (error) => reject(error);
   });
+};
+
+const initDB = (): Promise<IDBDatabase> => {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('RockyMockupsDB', 1);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+    request.onupgradeneeded = (e) => {
+      const db = (e.target as IDBOpenDBRequest).result;
+      if (!db.objectStoreNames.contains('history')) {
+        db.createObjectStore('history', { keyPath: 'id' });
+      }
+    };
+  });
+};
+
+const saveHistoryToDB = async (historyList: HistoryItem[]) => {
+  try {
+    const db = await initDB();
+    const tx = db.transaction('history', 'readwrite');
+    const store = tx.objectStore('history');
+    await new Promise<void>((resolve, reject) => {
+      const clearReq = store.clear();
+      clearReq.onsuccess = () => resolve();
+      clearReq.onerror = () => reject(clearReq.error);
+    });
+    for (const item of historyList) { store.put(item); }
+  } catch (e) { console.error('IndexedDB Save Error:', e); }
+};
+
+const loadHistoryFromDB = async (): Promise<HistoryItem[]> => {
+  try {
+    const db = await initDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction('history', 'readonly');
+      const store = tx.objectStore('history');
+      const req = store.getAll();
+      req.onsuccess = () => resolve(req.result.sort((a: any, b: any) => b.createdAt - a.createdAt));
+      req.onerror = () => resolve([]);
+    });
+  } catch (e) { return []; }
 };
 
 const App: React.FC = () => {
@@ -34,21 +76,16 @@ const App: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('mockupHistory');
-      if (stored) setHistory(JSON.parse(stored));
-    } catch (e) {}
+    loadHistoryFromDB().then(savedHistory => {
+      if (savedHistory && savedHistory.length > 0) {
+        setHistory(savedHistory);
+      }
+    });
   }, []);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('mockupHistory', JSON.stringify(history));
-    } catch (e) {
-      console.warn('O histórico de imagens ficou pesado demais pro navegador. Mantendo apenas as mais recentes na memória.');
-      if (history.length > 2) {
-         setHistory(history.slice(0, 2));
-      }
-    }
+    // Save to IndexedDB (asynchronous and huge storage limits)
+    saveHistoryToDB(history);
   }, [history]);
 
   const processFile = async (file: File) => {
@@ -291,7 +328,7 @@ const App: React.FC = () => {
                 <h2 className="font-poster text-4xl text-black uppercase">
                 HISTÓRICO (ÚLTIMAS LUTAS) ⏱️
                 </h2>
-                <button onClick={() => setHistory([])} className="text-sm font-display font-bold uppercase underline hover:text-red-600">Limpar Histórico</button>
+                <button onClick={() => { setHistory([]); saveHistoryToDB([]); }} className="text-sm font-display font-bold uppercase underline hover:text-red-600">Limpar Histórico</button>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {history.map(item => (
