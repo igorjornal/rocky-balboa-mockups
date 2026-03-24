@@ -40,7 +40,14 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('mockupHistory', JSON.stringify(history));
+    try {
+      localStorage.setItem('mockupHistory', JSON.stringify(history));
+    } catch (e) {
+      console.warn('O histórico de imagens ficou pesado demais pro navegador. Mantendo apenas as mais recentes na memória.');
+      if (history.length > 2) {
+         setHistory(history.slice(0, 2));
+      }
+    }
   }, [history]);
 
   const processFile = async (file: File) => {
