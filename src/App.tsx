@@ -142,6 +142,13 @@ const App: React.FC = () => {
     try {
         const newSrc = await generateMockup(uploadedFile.raw, uploadedFile.mimeType, category, style, layout, aspectRatio);
         setGeneratedImages(prev => prev.map(img => img.id === id ? { id, src: newSrc, isLoading: false } : img));
+        
+        const newHistoryItem = { id: `hist-${Date.now()}-remake`, src: newSrc, category, prompt: style, createdAt: Date.now() };
+        setHistory(prev => {
+          const updatedHistory = [newHistoryItem, ...prev].slice(0, MAX_HISTORY_SIZE);
+          saveHistoryToDB(updatedHistory);
+          return updatedHistory;
+        });
     } catch (err: any) {
         setError(`Erro ao refazer: ${err.message}`);
         setGeneratedImages(prev => prev.map(img => img.id === id ? { ...img, isLoading: false } : img));
