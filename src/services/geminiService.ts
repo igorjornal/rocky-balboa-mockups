@@ -1,19 +1,6 @@
-import { GoogleGenAI, Modality } from "@google/genai";
-import type { GenerateContentResponse } from "@google/genai";
-
-let aiInstance: GoogleGenAI | null = null;
-
-function getAI() {
-  const key = process.env.API_KEY;
-  if (!key || key.trim() === '' || key === 'undefined') {
-    throw new Error("CHAVE_FALTANDO");
-  }
-  if (!aiInstance) {
-    aiInstance = new GoogleGenAI({ apiKey: key });
-  }
-  return aiInstance;
-}
-
+/**
+ * Generates a mockup image using the Serverless Proxy Function.
+ */
 export async function generateMockup(
   base64Image: string,
   mimeType: string,
@@ -21,42 +8,29 @@ export async function generateMockup(
   userPrompt: string,
   layout: string
 ): Promise<string> {
-  const layoutInstruction = layout ? `Composição/Layout: ${layout}.` : '';
-
-  const fullPrompt = `Crie um mockup fotorrealista e de alta qualidade da imagem fornecida.
-    Contexto do mockup: ${category}.
-    ${layoutInstruction}
-    Estilo desejado: ${userPrompt || 'Limpo, moderno e profissional, com clima meio escuro ou intenso se for adequado.'}
-    A imagem enviada pelo usuário deve ser o foco central, claramente visível e perfeitamente integrada ao ambiente do mockup, respeitando a perspectiva, iluminação e texturas da cena.`;
-
   try {
-    const ai = getAI();
-    const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image',
-      contents: {
-        parts: [
-          { inlineData: { data: base64Image, mimeType: mimeType } },
-          { text: fullPrompt },
-        ],
-      },
-      config: { responseModalities: [Modality.IMAGE] },
+    const response = await fetch('/.netlify/functions/generateMockup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ base64Image, mimeType, category, userPrompt, layout })
     });
 
-    const imageData = response?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-
-    if (imageData) {
-      return imageData;
+    let data;
+    try {
+       data = await response.json();
+    } catch (e) {
+       // Se o Netlify cuspir HTML de erro, vai cair aqui
+       throw new Error(`Servidor quebrou feio. Status: ${response.status}`);
     }
 
-    throw new Error('A resposta da API não continha dados de imagem.');
+    if (!response.ok) {
+      throw new Error(data.error || `Servidor bloqueou: ${JSON.stringify(data)}`);
+    }
+
+    return data.image; // Retorna o base64
   } catch (error: any) {
     console.error("Erro da api:", error);
-    
-    if (error.message === "CHAVE_FALTANDO") {
-       throw new Error("A GEMINI_API_KEY falhou no Build! Aperte 'Clear Cache and Deploy site' no Netlify de novo.");
-    }
-
-    throw new Error(error.message || 'Falha na conexão com a API do Google.');
+    throw new Error(error.message || 'Falha na conexão com o servidor Netlify.');
   }
 }
 
