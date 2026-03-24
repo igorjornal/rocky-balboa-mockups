@@ -18,7 +18,7 @@ export async function generateMockup(
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || 'Erro no servidor (Netlify).');
+      throw new Error(data.error || data.errorMessage || data.message || `Netlify Error JSON: ${JSON.stringify(data)}`);
     }
 
     return data.image; // Retorna o base64 da imagem gerada pelo backend
