@@ -12,7 +12,6 @@ const fileToBase64 = (file: File): Promise<{ raw: string, prefixed: string }> =>
       const raw = prefixed.split(',')[1];
       resolve({ raw, prefixed });
     };
-    };
     reader.onerror = (error) => reject(error);
   });
 };
