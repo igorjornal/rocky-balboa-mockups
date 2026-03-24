@@ -1,15 +1,15 @@
-export default async (req, context) => {
-  if (req.method !== "POST") {
-    return new Response("Method Not Allowed", { status: 405 });
+export const handler = async (event: any, context: any) => {
+  if (event.httpMethod !== "POST") {
+    return { statusCode: 405, body: "Method Not Allowed" };
   }
 
   try {
-    const apiKey = process.env.GEMINI_API_KEY || (typeof Netlify !== 'undefined' ? Netlify.env.get("GEMINI_API_KEY") : undefined);
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return Response.json({ error: "A GEMINI_API_KEY não foi encontrada no servidor do Netlify." }, { status: 500 });
+      return { statusCode: 500, body: JSON.stringify({ error: "A GEMINI_API_KEY não foi encontrada no servidor do Netlify." }) };
     }
 
-    const body = await req.json();
+    const body = JSON.parse(event.body || "{}");
     const layoutInstruction = body.layout ? `Composição/Layout: ${body.layout}.` : '';
 
     const textPrompt = `Crie um mockup fotorrealista e de alta qualidade da imagem fornecida.
@@ -39,17 +39,17 @@ export default async (req, context) => {
     const data = await response.json();
 
     if (!response.ok) {
-       return Response.json({ error: data.error?.message || "O Google bloqueou a geração ou a chave é inválida." }, { status: 502 });
+       return { statusCode: 502, body: JSON.stringify({ error: data.error?.message || "O Google bloqueou a geração ou a chave é inválida." }) };
     }
 
     const imageData = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
     if (imageData) {
-       return Response.json({ image: imageData });
+       return { statusCode: 200, body: JSON.stringify({ image: imageData }) };
     }
 
-    return Response.json({ error: "A API do Google foi chamada com sucesso, mas não retornou a imagem esperada na resposta." }, { status: 500 });
+    return { statusCode: 500, body: JSON.stringify({ error: "A API do Google foi chamada com sucesso, mas não retornou a imagem esperada na resposta." }) };
 
-  } catch (error) {
-    return Response.json({ error: error.message || "Erro sintático no fetch do servidor proxy nativo." }, { status: 500 });
+  } catch (error: any) {
+    return { statusCode: 500, body: JSON.stringify({ error: error.message || "Erro sintático no fetch do servidor proxy nativo." }) };
   }
 };
