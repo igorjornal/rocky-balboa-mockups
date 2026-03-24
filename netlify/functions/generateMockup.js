@@ -1,13 +1,18 @@
 import { GoogleGenAI, Modality } from "@google/genai";
 
-export async function handler(event, context) {
-  if (event.httpMethod !== "POST") return { statusCode: 405, body: "Method Not Allowed" };
-  
-  try {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) return { statusCode: 500, body: JSON.stringify({ error: "A GEMINI_API_KEY não foi encontrada no Netlify." }) };
+export default async (req, context) => {
+  if (req.method !== "POST") {
+    return new Response("Method Not Allowed", { status: 405 });
+  }
 
-    const body = JSON.parse(event.body);
+  try {
+    // Netlify env config
+    const apiKey = process.env.GEMINI_API_KEY || (typeof Netlify !== 'undefined' ? Netlify.env.get("GEMINI_API_KEY") : undefined);
+    if (!apiKey) {
+      return Response.json({ error: "A GEMINI_API_KEY não foi encontrada no Netlify." }, { status: 500 });
+    }
+
+    const body = await req.json();
     const layoutInstruction = body.layout ? `Composição/Layout: ${body.layout}.` : '';
 
     const textPrompt = `Crie um mockup fotorrealista e de alta qualidade da imagem fornecida.
@@ -17,7 +22,7 @@ export async function handler(event, context) {
     A imagem enviada deve ser o foco central, perfeitamente integrada ao ambiente do mockup.`;
 
     const ai = new GoogleGenAI({ apiKey });
-    
+
     let response;
     try {
         response = await ai.models.generateContent({
@@ -31,17 +36,17 @@ export async function handler(event, context) {
           config: { responseModalities: [Modality.IMAGE] }
         });
     } catch (apiError) {
-         return { statusCode: 502, body: JSON.stringify({ error: `O Google Gemini rejeitou a chamada: ${apiError.message}` }) };
+         return Response.json({ error: `O Google Gemini rejeitou a chamada: ${apiError.message}` }, { status: 502 });
     }
 
     const imageData = response?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
     if (imageData) {
-       return { statusCode: 200, body: JSON.stringify({ image: imageData }) };
+       return Response.json({ image: imageData });
     }
-    
-    return { statusCode: 500, body: JSON.stringify({ error: "O Google não retornou os dados da imagem." }) };
-    
+
+    return Response.json({ error: "O Google não retornou os dados da imagem." }, { status: 500 });
+
   } catch (error) {
-    return { statusCode: 500, body: JSON.stringify({ error: error.message || "Netlify Function Execution Error" }) };
+    return Response.json({ error: error.message || "Erro interno do servidor." }, { status: 500 });
   }
-}
+};
