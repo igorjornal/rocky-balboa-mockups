@@ -83,10 +83,7 @@ const App: React.FC = () => {
     });
   }, []);
 
-  useEffect(() => {
-    // Save to IndexedDB (asynchronous and huge storage limits)
-    saveHistoryToDB(history);
-  }, [history]);
+  // Removed flawed auto-save useEffect because on initial mount history is [] and it wiped the database!
 
   const processFile = async (file: File) => {
     if (['image/png', 'image/jpeg', 'image/webp', 'image/avif', 'image/heic'].includes(file.type)) {
@@ -128,7 +125,12 @@ const App: React.FC = () => {
       const newImages = results.map((src, index) => ({ id: `img-${Date.now()}-${index}`, src, isLoading: false }));
       setGeneratedImages(newImages);
       const newHistoryItems = results.map((src, index) => ({ id: `hist-${Date.now()}-${index}`, src, category, prompt: style, createdAt: Date.now() }));
-      setHistory(prev => [...newHistoryItems, ...prev].slice(0, MAX_HISTORY_SIZE));
+      setHistory(prev => {
+        const updatedHistory = [...newHistoryItems, ...prev].slice(0, MAX_HISTORY_SIZE);
+        // Salva com segurança e precisão apenas DEPOIS de adicionar o novo item
+        saveHistoryToDB(updatedHistory);
+        return updatedHistory;
+      });
     } catch (err: any) {
       setError(err.message || 'Ocorreu um erro no ringue.');
     } finally { setIsLoading(false); }
