@@ -36,11 +36,7 @@ const saveHistoryToDB = async (historyList: HistoryItem[]) => {
     const db = await initDB();
     const tx = db.transaction('history', 'readwrite');
     const store = tx.objectStore('history');
-    await new Promise<void>((resolve, reject) => {
-      const clearReq = store.clear();
-      clearReq.onsuccess = () => resolve();
-      clearReq.onerror = () => reject(clearReq.error);
-    });
+    // Upsert items without clearing the database to prevent catastrophic wipes if the transaction fails midway
     for (const item of historyList) { store.put(item); }
   } catch (e) { console.error('IndexedDB Save Error:', e); }
 };
@@ -52,7 +48,10 @@ const loadHistoryFromDB = async (): Promise<HistoryItem[]> => {
       const tx = db.transaction('history', 'readonly');
       const store = tx.objectStore('history');
       const req = store.getAll();
-      req.onsuccess = () => resolve(req.result.sort((a: any, b: any) => b.createdAt - a.createdAt));
+      req.onsuccess = () => {
+        const sorted = req.result.sort((a: any, b: any) => b.createdAt - a.createdAt);
+        resolve(sorted.slice(0, 40));
+      };
       req.onerror = () => resolve([]);
     });
   } catch (e) { return []; }
@@ -126,10 +125,13 @@ const App: React.FC = () => {
       setGeneratedImages(newImages);
       const newHistoryItems = results.map((src, index) => ({ id: `hist-${Date.now()}-${index}`, src, category, prompt: style, createdAt: Date.now() }));
       setHistory(prev => {
-        const updatedHistory = [...newHistoryItems, ...prev].slice(0, MAX_HISTORY_SIZE);
-        // Salva com segurança e precisão apenas DEPOIS de adicionar o novo item
-        saveHistoryToDB(updatedHistory);
-        return updatedHistory;
+        // Safe merge with explicit deduplication and hardcoded clamping to 40
+        const merged = [...newHistoryItems, ...prev];
+        const unique = Array.from(new Map(merged.map(item => [item.id, item])).values());
+        const finalHistory = unique.slice(0, 40);
+        
+        saveHistoryToDB(finalHistory);
+        return finalHistory;
       });
     } catch (err: any) {
       setError(err.message || 'Ocorreu um erro no ringue.');
