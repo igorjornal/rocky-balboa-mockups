@@ -23,6 +23,7 @@ const App: React.FC = () => {
   const [category, setCategory] = useState<string>('');
   const [layout, setLayout] = useState<string>('');
   const [style, setStyle] = useState<string>('');
+  const [aspectRatio, setAspectRatio] = useState<string>('Automático');
   const [numMockups, setNumMockups] = useState<number>(4);
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -82,7 +83,7 @@ const App: React.FC = () => {
     setIsLoading(true); setError(null); setGeneratedImages([]);
 
     let promises = Array(numMockups).fill(null).map(() => 
-        generateMockup(uploadedFile.raw, uploadedFile.mimeType, category, style, layout)
+        generateMockup(uploadedFile.raw, uploadedFile.mimeType, category, style, layout, aspectRatio)
     );
 
     try {
@@ -100,13 +101,13 @@ const App: React.FC = () => {
     if (!uploadedFile || !category) return;
     setGeneratedImages(prev => prev.map(img => img.id === id ? { ...img, isLoading: true } : img));
     try {
-        const newSrc = await generateMockup(uploadedFile.raw, uploadedFile.mimeType, category, style, layout);
+        const newSrc = await generateMockup(uploadedFile.raw, uploadedFile.mimeType, category, style, layout, aspectRatio);
         setGeneratedImages(prev => prev.map(img => img.id === id ? { id, src: newSrc, isLoading: false } : img));
     } catch (err: any) {
         setError(`Erro ao refazer: ${err.message}`);
         setGeneratedImages(prev => prev.map(img => img.id === id ? { ...img, isLoading: false } : img));
     }
-  }, [uploadedFile, category, style, layout]);
+  }, [uploadedFile, category, style, layout, aspectRatio]);
 
   const downloadImage = (base64Image: string, fileName: string, id: string) => {
     setDownloadStatus(prev => ({ ...prev, [id]: 'downloading' }));
@@ -219,6 +220,17 @@ const App: React.FC = () => {
                 <select value={style} onChange={e => setStyle(e.target.value)} className="brutalist-border bg-gray-100 p-4 font-display font-bold text-lg outline-none cursor-pointer focus:bg-white">
                   <option value="">Instinto Bruto (Padrão)</option>
                   {STYLE_PRESETS.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className="font-poster text-2xl uppercase">Formato (Proporção)</label>
+                <select value={aspectRatio} onChange={e => setAspectRatio(e.target.value)} className="brutalist-border bg-gray-100 p-4 font-display font-bold text-lg outline-none cursor-pointer focus:bg-white">
+                  <option value="Automático">Automático (Adapta à Imagem)</option>
+                  <option value="1:1">Quadrado (1:1 - Feed)</option>
+                  <option value="9:16">Vertical (9:16 - Stories/TikTok)</option>
+                  <option value="16:9">Horizontal (16:9 - YouTube/TV)</option>
+                  <option value="4:3">Retrato (4:3)</option>
                 </select>
               </div>
 

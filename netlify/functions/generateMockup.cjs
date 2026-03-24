@@ -11,10 +11,19 @@ exports.handler = async function(event, context) {
 
     const body = JSON.parse(event.body || "{}");
     const layoutInstruction = body.layout ? `Composição/Layout: ${body.layout}.` : '';
+    
+    // Explicit Instruction on Aspect Ratio
+    let aspectInstruction = "";
+    if (body.aspectRatio && body.aspectRatio !== "Automático") {
+       aspectInstruction = `EXTREMAMENTE IMPORTANTE: A imagem final gerada DEVE SER CRIADA exatamente na proporção / aspect ratio geométrica de ${body.aspectRatio}. Modifique o corte do cenário se necessário para obedecer RIGOROSAMENTE à proporção ${body.aspectRatio}.`;
+    } else {
+       aspectInstruction = `Corte o cenário adaptando automaticamente a melhor proporção que caiba o produto original de forma elegante.`;
+    }
 
     const textPrompt = `Crie um mockup fotorrealista e de alta qualidade da imagem fornecida.
     Contexto do mockup: ${body.category}.
     ${layoutInstruction}
+    ${aspectInstruction}
     Estilo desejado: ${body.userPrompt || 'Limpo, moderno e profissional, com clima escuro se for adequado.'}
     A imagem enviada deve ser o foco central, perfeitamente integrada ao ambiente do mockup.`;
 

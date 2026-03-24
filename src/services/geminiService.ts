@@ -6,13 +6,14 @@ export async function generateMockup(
   mimeType: string,
   category: string,
   userPrompt: string,
-  layout: string
+  layout: string,
+  aspectRatio: string
 ): Promise<string> {
   try {
     const response = await fetch('/.netlify/functions/generateMockup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ base64Image, mimeType, category, userPrompt, layout })
+      body: JSON.stringify({ base64Image, mimeType, category, userPrompt, layout, aspectRatio })
     });
 
     let data;
