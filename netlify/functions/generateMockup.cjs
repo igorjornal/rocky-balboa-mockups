@@ -39,10 +39,6 @@ exports.handler = async function(event, context) {
       }
     };
 
-    if (body.aspectRatio && body.aspectRatio !== "Automático") {
-       requestBody.generationConfig.aspectRatio = body.aspectRatio;
-    }
-
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${apiKey}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
