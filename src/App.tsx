@@ -28,9 +28,7 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
-  const [historyFilter, setHistoryFilter] = useState<string>('Todos');
   const [downloadStatus, setDownloadStatus] = useState<Record<string, 'downloading' | 'saved'>>({});
-  const [maximizedImage, setMaximizedImage] = useState<GeneratedImage | HistoryItem | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -240,7 +238,7 @@ const App: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {generatedImages.map(img => (
                 <div key={img.id} className="brutalist-border bg-white flex flex-col">
-                  <div className="relative aspect-square bg-gray-100 flex items-center justify-center cursor-pointer p-4 border-b-4 border-black" onClick={() => !img.isLoading && setMaximizedImage(img)}>
+                  <div className="relative aspect-square bg-gray-100 flex items-center justify-center p-4 border-b-4 border-black">
                     {img.isLoading ? (
                       <span className="font-poster text-3xl animate-pulse">CARREGANDO...</span>
                     ) : (
