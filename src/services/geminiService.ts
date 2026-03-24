@@ -1,11 +1,18 @@
 import { GoogleGenAI, Modality } from "@google/genai";
 import type { GenerateContentResponse } from "@google/genai";
 
-if (!process.env.API_KEY) {
-  throw new Error("API_KEY environment variable is not set");
-}
+let aiInstance: GoogleGenAI | null = null;
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+function getAI() {
+  const key = process.env.API_KEY || process.env.GEMINI_API_KEY;
+  if (!key || key === 'undefined') {
+    throw new Error("Mestre, o Netlify não encontrou a sua GEMINI_API_KEY. Adicione ela nas configurações de Environment Variables lá no site do Netlify e faça um novo Deploy!");
+  }
+  if (!aiInstance) {
+    aiInstance = new GoogleGenAI({ apiKey: key });
+  }
+  return aiInstance;
+}
 
 /**
  * Generates a mockup image using the Gemini API.
@@ -32,6 +39,7 @@ export async function generateMockup(
     A imagem enviada pelo usuário deve ser o foco central, claramente visível e perfeitamente integrada ao ambiente do mockup, respeitando a perspectiva, iluminação e texturas da cena.`;
 
   try {
+    const ai = getAI();
     const response: GenerateContentResponse = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
       contents: {
