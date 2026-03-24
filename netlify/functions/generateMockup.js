@@ -1,4 +1,4 @@
-export const handler = async (event, context) => {
+export async function handler(event, context) {
   if (event.httpMethod !== "POST") return { statusCode: 405, body: "Method Not Allowed" };
   
   try {
